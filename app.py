@@ -1,12 +1,12 @@
-from fastapi import FastAPI, Depends, Query, Path
+from fastapi import FastAPI, Depends, Query
 from pymongo import MongoClient
 from typing import List, Optional
 from pydantic import BaseModel
+import json
 
 app = FastAPI()
 
 # Connect to MongoDB
-# client = MongoClient('mongodb://localhost:27017')
 client = MongoClient('mongodb+srv://diwakar:yWwUI5qpupmNow1N@cluster0.de77o86.mongodb.net/')
 db = client['scheme']
 scheme_collection = db['scheme']
@@ -31,7 +31,7 @@ class SchemeData(BaseModel):
 
 @app.get("/api/scheme-data", summary="Get scheme data based on user location")
 async def get_scheme_data(
-    user_city: UserCity = Depends(Query("city", nullable=True, description="User's city")),
+    user_city: UserCity = Depends(Query(None, description="User's city", alias="city"))
 ):
     # Retrieve user data based on provided city
     user_data = user_data_collection.find_one({"city": user_city.city.lower()})
@@ -42,8 +42,10 @@ async def get_scheme_data(
 
     # Find schemes containing "props" in body_text and matching user's state
     results = scheme_collection.find({
-        "body_text": {"$regex": ".*props.*"},
-        "body_text": {"$regex": f".*{user_city.city.lower()}", "$options": "i"}
+        "$and": [
+            {"body_text": {"$regex": ".*props.*"}},
+            {"body_text": {"$regex": f".*{user_city.city.lower()}", "$options": "i"}}
+        ]
     })
 
     scheme_data_list = []
