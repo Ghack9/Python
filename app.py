@@ -31,10 +31,10 @@ class SchemeData(BaseModel):
 
 @app.get("/api/scheme-data", summary="Get scheme data based on user location")
 async def get_scheme_data(
-    user_city: UserCity = Depends(Query(None, description="User's city", alias="city"))
+    user_city: str = Query(None, description="User's city", alias="city")
 ):
     # Retrieve user data based on provided city
-    user_data = user_data_collection.find_one({"city": user_city.city.lower()})
+    user_data = user_data_collection.find_one({"city": user_city.lower()})
 
     if not user_data:
         # No user data found with given city
@@ -44,7 +44,7 @@ async def get_scheme_data(
     results = scheme_collection.find({
         "$and": [
             {"body_text": {"$regex": ".*props.*"}},
-            {"body_text": {"$regex": f".*{user_city.city.lower()}", "$options": "i"}}
+            {"body_text": {"$regex": f".*{user_city.lower()}", "$options": "i"}}
         ]
     })
 
