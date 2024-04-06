@@ -20,52 +20,43 @@ state_keywords = [
     "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
     "Uttarakhand", "West Bengal"
 ]
+def get_scheme_data():
+    # Get all user data documents
+    user_data_documents = user_data_collection.find()
 
-# Models for request and response data
-class UserCity(BaseModel):
-    city: Optional[str] = None
-
-class SchemeData(BaseModel):
-    eligibilityCriteria: str
-    applicationProcess: str
-
-@app.get("/api/scheme-data", summary="Get scheme data based on user location")
-async def get_scheme_data(
-    user_city: UserCity = Depends(Query("city", nullable=True, description="User's city")),
-):
-    # Retrieve user data based on provided city
-    user_data = user_data_collection.find_one({"city": user_city.city.lower()})
-
-    if not user_data:
-        # No user data found with given city
-        return {"message": "No user data found with provided city."}
-
-    # Find schemes containing "props" in body_text and matching user's state
-    results = scheme_collection.find({
-        "body_text": {"$regex": ".*props.*"},
-        "body_text": {"$regex": f".*{user_city.city.lower()}", "$options": "i"}
-    })
-
+    # Store eligibilityCriteria and applicationProcess data from props for documents with matched keywords in body_text
     scheme_data_list = []
-    for result in results:
-        body_text = result.get("body_text", [])
-        for line in body_text:
-            try:
-                json_data = json.loads(line)
-                props_data = json_data.get("props", {})
-                page_props = props_data.get("pageProps", {})
-                scheme_data = page_props.get("schemeData", {})
-                en_data = scheme_data.get("en", {})
-                eligibility_criteria = en_data.get("eligibilityCriteria")
-                application_process = en_data.get("applicationProcess")
 
-                if eligibility_criteria and application_process:
-                    scheme_data_list.append(SchemeData(eligibilityCriteria=eligibility_criteria, applicationProcess=application_process))
-            except json.JSONDecodeError:
-                print(f"Invalid JSON format in line: {line}")
-                continue
+    for user_data in user_data_documents:
+        user_city = user_data.get('city', '').strip()
 
-    return scheme_data_list
+        # Find schemes containing "props" in body_text
+        results = scheme_collection.find({'body_text': {'$regex': '.*props.*'}})
+
+        for result in results:
+            body_text = result.get('body_text', [])
+            for line in body_text:
+                for keyword in state_keywords:
+                    if keyword.lower() in line.lower():
+                        # Matched a state keyword, check user's city
+                        if user_city.lower() == keyword.lower():
+                            try:
+                                json_data = json.loads(line)
+                                props_data = json_data.get('props', {})
+                                page_props = props_data.get('pageProps', {})
+                                scheme_data = page_props.get('schemeData', {})
+                                en_data = scheme_data.get('en', {})
+                                eligibility_criteria = en_data.get('eligibilityCriteria')
+                                application_process = en_data.get('applicationProcess')
+
+                                if eligibility_criteria and application_process:
+                                    scheme_data_list.append({'eligibilityCriteria': eligibility_criteria, 'applicationProcess': application_process})
+                            except json.JSONDecodeError:
+                                print(f'Invalid JSON format in line: {line}')
+                                continue
+
+    # Return eligibilityCriteria and applicationProcess data as JSON response
+    return jsonify(scheme_data_list)
 
 if __name__ == "__main__":
     import uvicorn
