@@ -1,23 +1,18 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+ 
+from flask import Flask, jsonify
+from pymongo import MongoClient
 import json
+from flask_cors import CORS
+import os
 
-app = FastAPI()
-
-# Enable CORS
-origins = ["*"]  # Update with your actual frontend origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = Flask(__name__)
+CORS(app)
 
 # Connect to MongoDB
-# client = AsyncIOMotorClient('mongodb://localhost:27017')
-client = AsyncIOMotorClient('mongodb+srv://diwakar:yWwUI5qpupmNow1N@cluster0.de77o86.mongodb.net/')
+# client = MongoClient('mongodb://localhost:27017')
+mongo_connection_string = os.environ.get('MONGO_CONNECTION_STRING')
+
+client = MongoClient(mongo_connection_string)
 db = client['scheme']
 scheme_collection = db['scheme']
 user_data_collection = db['user_data']
@@ -29,10 +24,10 @@ state_keywords = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chha
                   "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
                   "Uttarakhand", "West Bengal"]
 
-@app.get('/api/scheme-data')
-async def get_scheme_data():
+@app.route('/api/scheme-data', methods=['GET'])
+def get_scheme_data():
     # Get all user data documents
-    user_data_documents = await user_data_collection.find().to_list(length=None)
+    user_data_documents = user_data_collection.find()
 
     # Store eligibilityCriteria and applicationProcess data from props for documents with matched keywords in body_text
     scheme_data_list = []
@@ -41,7 +36,7 @@ async def get_scheme_data():
         user_city = user_data.get('city', '').strip()
 
         # Find schemes containing "props" in body_text
-        results = await scheme_collection.find({'body_text': {'$regex': '.*props.*'}}).to_list(length=None)
+        results = scheme_collection.find({'body_text': {'$regex': '.*props.*'}})
 
         for result in results:
             body_text = result.get('body_text', [])
@@ -66,8 +61,7 @@ async def get_scheme_data():
                                 continue
 
     # Return eligibilityCriteria and applicationProcess data as JSON response
-    return scheme_data_list
+    return jsonify(scheme_data_list)
 
 if __name__ == '__main__':
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    app.run(debug=True)
