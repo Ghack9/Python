@@ -42,8 +42,10 @@ def extract_scheme_data(line):
         if eligibility_criteria and application_process:
             return {'eligibilityCriteria': eligibility_criteria, 'applicationProcess': application_process}
     except json.JSONDecodeError:
-        print(f'Invalid JSON format in line: {line}')
+        pass  # Skip processing this line
+
     return None
+
 
 @app.get('/api/scheme-data')
 async def get_scheme_data():
