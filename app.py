@@ -1,25 +1,30 @@
-from fastapi import FastAPI, Depends, Query, Path
+ 
+from flask import Flask, jsonify
 from pymongo import MongoClient
-from typing import List, Optional
-from pydantic import BaseModel
+import json
+from flask_cors import CORS
+import os
 
-app = FastAPI()
+app = Flask(__name__)
+CORS(app)
 
 # Connect to MongoDB
 # client = MongoClient('mongodb://localhost:27017')
-client = MongoClient('mongodb+srv://diwakar:yWwUI5qpupmNow1N@cluster0.de77o86.mongodb.net/')
+mongo_connection_string = os.environ.get('MONGO_CONNECTION_STRING')
+
+client = MongoClient(mongo_connection_string)
 db = client['scheme']
 scheme_collection = db['scheme']
 user_data_collection = db['user_data']
 
 # Keywords representing states
-state_keywords = [
-    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
-    "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh",
-    "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
-    "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
-    "Uttarakhand", "West Bengal"
-]
+state_keywords = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
+                  "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh",
+                  "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+                  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
+                  "Uttarakhand", "West Bengal"]
+
+@app.route('/api/scheme-data', methods=['GET'])
 def get_scheme_data():
     # Get all user data documents
     user_data_documents = user_data_collection.find()
@@ -58,6 +63,6 @@ def get_scheme_data():
     # Return eligibilityCriteria and applicationProcess data as JSON response
     return jsonify(scheme_data_list)
 
-if __name__ == "__main__":
-    import uvicorn
+if __name__ == '__main__':
+ import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
